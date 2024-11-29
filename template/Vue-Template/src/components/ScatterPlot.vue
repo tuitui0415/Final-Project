@@ -29,13 +29,14 @@ export default {
       svg: null,
       width: 600,
       height: 400,
-      margin: { top: 20, right: 30, bottom: 40, left: 50 },
+      margin: { top: 20, right: 100, bottom: 40, left: 50 },
       timeSteps: [], // 时间轴步长
       currentStep: 0, // 当前时间步长
     };
   },
   mounted() {
     this.generateData();
+    this.createColorScale();
     this.initChart();
     this.updateData();
   },
@@ -59,13 +60,29 @@ export default {
         .append("g")
         .attr("class", "y-axis")
         .attr("transform", `translate(${margin.left}, 0)`);
+
+      // **创建 tooltip div**
+      this.tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("position", "absolute")
+        .style("pointer-events", "none")
+        .style("background-color", "white")
+        .style("padding", "5px")
+        .style("border", "1px solid #ccc")
+        .style("border-radius", "5px")
+        .style("opacity", 0);
+
+      this.legend = this.svg.append("g")
+        .attr("class", "legend")
+        .attr("transform", `translate(${width - margin.right + 20}, ${margin.top})`);
     },
+
     // 生成模拟数据
     generateData() {
       // 时间范围 (2014-2019), 每月为一个时间步长
       const startDate = new Date(2014, 0, 1);
       const endDate = new Date(2019, 11, 31);
-      const timeStep = 30; // 天为步长
+      const timeStep = 15; // 天为步长
 
       this.timeSteps = [];
       let currentDate = startDate;
@@ -94,67 +111,135 @@ export default {
       this.filteredData = this.data.filter((d) => d.time === currentDate);
       this.updateChart();
     },
-    // 更新图表
-    updateChart() {
-      const { svg, filteredData, width, height, margin } = this;
+  
+  // Create color scale based on unique genres
+  createColorScale() {
+    // Extract unique genres from data
+    const genres = Array.from(new Set(this.data.map(d => d.category)));
 
-      // 定义缩放
-      const xScale = d3
-        .scaleLinear()
-        .domain([0, 100]) // Positive Percentage: 0%-100%
-        .range([margin.left, width - margin.right]);
+    // Define the color scale
+    this.colorScale = d3.scaleOrdinal()
+      .domain(genres)
+      .range(d3.schemeCategory10); // Or any color scheme you prefer
+  },
 
-      const yScale = d3
-        .scaleLinear()
-        .domain([0, 10000]) // Total Reviews: 0-10000
-        .range([height - margin.bottom, margin.top]);
+  // 更新图表
+  updateChart() {
+    const { svg, filteredData, width, height, margin, colorScale } = this;
 
-      // 定义圆大小缩放（将游戏数量映射到圆的面积）
-      const sizeScale = d3
-        .scaleSqrt() // 使用平方根比例映射
-        .domain([1, 50]) // 游戏数量范围：1-50
-        .range([5, 20]); // 半径范围：5px-20px
+    // Define scales
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, 100]) // Positive Percentage: 0%-100%
+      .range([margin.left, width - margin.right]);
 
-      // 更新 X 轴
-      svg
-        .select(".x-axis")
-        .call(d3.axisBottom(xScale).ticks(10).tickFormat((d) => `${d}%`));
+    const yScale = d3
+      .scaleLinear()
+      .domain([0, 10000]) // Total Reviews: 0-10000
+      .range([height - margin.bottom, margin.top]);
 
-      // 更新 Y 轴
-      svg.select(".y-axis").call(d3.axisLeft(yScale).ticks(5));
+    // Define size scale
+    const sizeScale = d3
+      .scaleSqrt()
+      .domain([1, 50]) // Number of games: 1-50
+      .range([5, 20]); // Radius: 5px-20px
 
-      // 绑定数据
-      const circles = svg.selectAll("circle").data(filteredData);
+    // Update axes
+    svg
+      .select(".x-axis")
+      .call(d3.axisBottom(xScale).ticks(10).tickFormat((d) => `${d}%`));
 
-      // 更新现有点
-      circles
-        .transition()
-        .duration(500)
-        .attr("cx", (d) => xScale(d.positivePercentage))
-        .attr("cy", (d) => yScale(d.totalReviews))
-        .attr("r", (d) => sizeScale(d.numberOfGames)) // 根据游戏数量调整半径
-        .attr("fill", "steelblue");
+    svg.select(".y-axis").call(d3.axisLeft(yScale).ticks(5));
 
-      // 添加新点
-      circles
-        .enter()
-        .append("circle")
-        .attr("cx", (d) => xScale(d.positivePercentage))
-        .attr("cy", (d) => yScale(d.totalReviews))
-        .attr("r", 0) // 动画从半径 0 开始
-        .attr("fill", "steelblue")
-        .transition()
-        .duration(500)
-        .attr("r", (d) => sizeScale(d.numberOfGames)); // 动画显示大小
+    // Bind data with key function
+    const circles = svg.selectAll("circle").data(filteredData, d => d.category);
 
-      // 移除旧点
-      circles
-        .exit()
-        .transition()
-        .duration(500)
-        .attr("r", 0)
-        .remove();
-    },
+    // Remove old circles
+    circles.exit()
+      .transition()
+      .duration(500)
+      .attr("r", 0)
+      .remove();
+
+    // Add new circles
+    const circlesEnter = circles.enter()
+      .append("circle")
+      .attr("r", 0)
+      .attr("cx", d => xScale(d.positivePercentage))
+      .attr("cy", d => yScale(d.totalReviews))
+      .attr("fill", d => colorScale(d.category));
+
+    // Merge new and existing circles
+    const circlesMerged = circlesEnter.merge(circles);
+
+    // Add event listeners
+    circlesMerged
+      .on("mouseover", (event, d) => {
+        this.tooltip
+          .style("opacity", 1)
+          .html(`
+            <strong>${d.category}</strong><br/>
+            Positive Percentage: ${d.positivePercentage.toFixed(2)}%<br/>
+            Total Reviews: ${d.totalReviews.toFixed(0)}<br/>
+            Number of Games: ${d.numberOfGames}
+          `);
+      })
+      .on("mousemove", (event) => {
+        this.tooltip
+          .style("left", (event.pageX + 10) + "px")
+          .style("top", (event.pageY - 28) + "px");
+      })
+      .on("mouseout", () => {
+        this.tooltip.style("opacity", 0);
+      });
+
+    // Apply transitions
+    circlesMerged
+      .transition()
+      .duration(500)
+      .attr("cx", (d) => xScale(d.positivePercentage))
+      .attr("cy", (d) => yScale(d.totalReviews))
+      .attr("r", (d) => sizeScale(d.numberOfGames))
+      .attr("fill", d => colorScale(d.category)); // Ensure fill is updated
+
+    // Update Legend
+    const genres = colorScale.domain();
+
+    // Bind data to legend items
+    const legendItems = this.legend.selectAll(".legend-item")
+      .data(genres);
+
+    // Enter selection
+    const legendEnter = legendItems.enter()
+      .append("g")
+      .attr("class", "legend-item")
+      .attr("transform", (d, i) => `translate(0, ${i * 20})`);
+
+    legendEnter.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", 12)
+      .attr("height", 12)
+      .attr("fill", d => colorScale(d));
+
+    legendEnter.append("text")
+      .attr("x", 18)
+      .attr("y", 10)
+      .text(d => d)
+      .style("font-size", "12px")
+      .attr("alignment-baseline", "middle");
+
+    // Update existing legend items
+    legendItems.select("rect")
+      .attr("fill", d => colorScale(d));
+
+    legendItems.select("text")
+      .text(d => d);
+
+    // Remove old legend items
+    legendItems.exit().remove();
+  },
+
   },
 };
 </script>
@@ -162,5 +247,18 @@ export default {
 <style>
 svg {
   border: 1px solid #ccc;
+}
+.tooltip {
+  position: absolute;
+  text-align: left;
+  width: auto;
+  height: auto;
+  padding: 5px;
+  font: 12px sans-serif;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  pointer-events: none;
+  opacity: 0;
 }
 </style>
