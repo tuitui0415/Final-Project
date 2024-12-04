@@ -16,6 +16,9 @@
         />
         <span class="slider-value">{{ timeSteps[currentStep] }}</span>
       </div>
+      <button @click="toggleTrails" class="toggle-trails-btn">
+        {{ showTrails ? "Stop Trails" : "Start Trails" }}
+      </button>
     </div>
     <svg ref="chart"></svg>
   </div>
@@ -36,6 +39,8 @@ export default {
       timeSteps: [],
       currentStep: 0,
       colorScale: null,
+      showTrails: false, // 是否显示踪迹
+      trailStartIndex: null, // 记录踪迹起始索引
     };
   },
   mounted() {
@@ -52,9 +57,9 @@ export default {
   },
   methods: {
     setChartSize() {
-      this.width = window.innerWidth; // 动态设置宽度
-      this.height = window.innerHeight - 100; // 动态设置高度
-      this.margin = { top: 80, right: 100, bottom: 80, left: 100 }; // 边距调整
+      this.width = window.innerWidth;
+      this.height = window.innerHeight - 100;
+      this.margin = { top: 80, right: 100, bottom: 80, left: 100 };
     },
     resizeChart() {
       this.setChartSize();
@@ -115,22 +120,89 @@ export default {
         .attr("class", "tooltip")
         .style("opacity", 0);
     },
+    toggleTrails() {
+      this.showTrails = !this.showTrails;
+
+      if (this.showTrails) {
+        // 记录起始索引为当前时间点
+        this.trailStartIndex = this.currentStep;
+      } else {
+        // 停止踪迹显示时清除踪迹并重置索引
+        this.trailStartIndex = null;
+        this.updateTrails();
+      }
+      this.updateData();
+    },
     updateData() {
       const currentDate = this.timeSteps[this.currentStep];
       this.filteredData = this.data.filter((d) => d.time === currentDate);
+      this.updateTrails();
       this.updateChart();
+    },
+    updateTrails() {
+      const { data, svg, width, height, margin, colorScale, showTrails, trailStartIndex, currentStep } = this;
+
+      if (!showTrails || trailStartIndex === null) {
+        // 如果踪迹未启用或未设置起始索引，则隐藏所有踪迹
+        svg.selectAll(".trail-circle")
+          .transition()
+          .duration(500)
+          .attr("opacity", 0);
+        return;
+      }
+
+      const xScale = d3
+        .scaleLinear()
+        .domain([0, 110]) // X 轴范围
+        .range([margin.left, width - margin.right]);
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([0, 11000]) // Y 轴范围
+        .range([height - margin.bottom, margin.top]);
+
+      const sizeScale = d3
+        .scaleSqrt()
+        .domain([1, 50]) // 游戏数量范围
+        .range([5, 30]);
+
+      const opacityScale = d3
+        .scaleLinear()
+        .domain([trailStartIndex, currentStep]) // 仅显示起始到当前时间的踪迹
+        .range([0.2, 1]);
+
+      const circles = svg.selectAll(".trail-circle").data(data, (d) => `${d.time}-${d.category}`);
+
+      circles
+        .enter()
+        .append("circle")
+        .attr("class", "trail-circle")
+        .merge(circles)
+        .attr("cx", (d) => xScale(d.positivePercentage))
+        .attr("cy", (d) => yScale(d.totalReviews))
+        .attr("r", (d) => sizeScale(d.numberOfGames))
+        .attr("fill", (d) => colorScale(d.category))
+        .attr("opacity", (d) => {
+          const timeIndex = this.timeSteps.indexOf(d.time);
+          if (timeIndex < trailStartIndex || timeIndex > currentStep) {
+            return 0; // 隐藏起始时间之前和未来时间的圆点
+          }
+          return opacityScale(timeIndex); // 根据时间调整透明度
+        });
+
+      circles.exit().remove();
     },
     updateChart() {
       const { svg, filteredData, width, height, margin, colorScale } = this;
 
       const xScale = d3
         .scaleLinear()
-        .domain([0, 110]) // 增加 X 轴冗余
+        .domain([0, 110])
         .range([margin.left, width - margin.right]);
 
       const yScale = d3
         .scaleLinear()
-        .domain([0, 11000]) // 增加 Y 轴冗余
+        .domain([0, 11000])
         .range([height - margin.bottom, margin.top]);
 
       const sizeScale = d3
@@ -138,7 +210,6 @@ export default {
         .domain([1, 50])
         .range([5, 30]);
 
-      // Update axes
       svg
         .select(".x-axis")
         .call(d3.axisBottom(xScale).ticks(10).tickFormat((d) => `${d}%`))
@@ -153,8 +224,7 @@ export default {
         .style("fill", "#c7d5e0")
         .style("font-size", "14px");
 
-      // Update circles
-      const circles = svg.selectAll("circle").data(filteredData, (d) => d.category);
+      const circles = svg.selectAll(".filtered-circle").data(filteredData, (d) => d.category);
 
       circles
         .exit()
@@ -166,32 +236,15 @@ export default {
       const circlesEnter = circles
         .enter()
         .append("circle")
+        .attr("class", "filtered-circle")
         .attr("r", 0)
         .attr("cx", (d) => xScale(d.positivePercentage))
         .attr("cy", (d) => yScale(d.totalReviews))
         .attr("fill", (d) => colorScale(d.category))
         .attr("opacity", 0.7);
 
-      const circlesMerged = circlesEnter.merge(circles);
-
-      circlesMerged
-        .on("mouseover", (event, d) => {
-          this.tooltip
-            .style("opacity", 1)
-            .html(`
-              <strong>${d.category}</strong><br/>
-              Positive Percentage: ${d.positivePercentage.toFixed(2)}%<br/>
-              Total Reviews: ${d.totalReviews.toFixed(0)}<br/>
-              Number of Games: ${d.numberOfGames}
-            `)
-            .style("left", `${event.pageX + 10}px`)
-            .style("top", `${event.pageY - 28}px`);
-        })
-        .on("mouseout", () => {
-          this.tooltip.style("opacity", 0);
-        });
-
-      circlesMerged
+      circlesEnter
+        .merge(circles)
         .transition()
         .duration(500)
         .attr("cx", (d) => xScale(d.positivePercentage))
