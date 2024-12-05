@@ -52,6 +52,9 @@ export default {
 
     window.addEventListener("resize", this.resizeChart);
   },
+  created() {
+    this.read()
+  },
   beforeDestroy() {
     window.removeEventListener("resize", this.resizeChart);
   },
@@ -67,6 +70,26 @@ export default {
         .attr("width", this.width)
         .attr("height", this.height);
       this.updateChart();
+    },
+    async read() {
+      try {
+        const gameData = await d3.csv('../../data/game_with_review.csv', (d) => {
+          const standardizeResponse = (response) => response?.trim().toLowerCase() ?? '';
+          return {
+            appid: parseInt(standardizeResponse(d['appid'])), 
+            name: standardizeResponse(d['name']),
+            date: standardizeResponse(d['release_date']),
+            categories: standardizeResponse(d['categories']),
+            genres: standardizeResponse(d['genres']),
+            community_tags: standardizeResponse(d['steamspy_tags']),
+            pos_rating: parseInt(standardizeResponse(d['positive_ratings'])), 
+            neg_rating: parseInt(standardizeResponse(d['negative_ratings'])), 
+          };
+        });
+        console.log("data: ", gameData);
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
     },
     generateData() {
       const startDate = new Date(2014, 0, 1);
