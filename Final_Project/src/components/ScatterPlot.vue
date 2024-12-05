@@ -26,6 +26,7 @@
 
 <script>
 import * as d3 from "d3";
+//import { useGameStore } from '../stores/gameStore'; // Import the store
 
 export default {
   data() {
