@@ -1,26 +1,46 @@
 <template>
   <div class="container">
-    <h2>Scatter Plot: Reviews vs Positive Percentage</h2>
+    <h2>Steam Game Development Helper</h2>
     <div class="controls">
-      <label for="time-slider" class="slider-label">Time:</label>
+      <label for="start-slider" class="slider-label">Start Time:</label>
       <div class="slider-container">
         <input
-          id="time-slider"
+          id="start-slider"
           class="custom-slider"
           type="range"
           :min="0"
           :max="timeSteps.length - 1"
           step="1"
-          v-model="currentStep"
+          v-model="startStep"
           @input="updateData"
         />
-        <span class="slider-value">{{ timeSteps[currentStep] }}</span>
+        <span class="slider-value">{{ timeSteps[startStep] }}</span>
       </div>
+
+      <label for="end-slider" class="slider-label">End Time:</label>
+      <div class="slider-container">
+        <input
+          id="end-slider"
+          class="custom-slider"
+          type="range"
+          :min="startStep"
+          :max="timeSteps.length - 1"
+          step="1"
+          v-model="endStep"
+          @input="updateData"
+        />
+        <span class="slider-value">{{ timeSteps[endStep] }}</span>
+      </div>
+
       <button @click="toggleTrails" class="toggle-trails-btn">
         {{ showTrails ? "Stop Trails" : "Start Trails" }}
       </button>
     </div>
-    <svg ref="chart"></svg>
+
+    <div class="chart-container">
+      <svg ref="chart"></svg>
+      <div ref="legend" class="legend-container"></div>
+    </div>
   </div>
 </template>
 
@@ -32,15 +52,17 @@ export default {
     return {
       data: [], // 原始数据
       filteredData: [], // 当前时间步的数据
+      trailsData: [], // 累积轨迹的数据
       svg: null, // SVG 容器
       width: 0,
       height: 0,
-      margin: { top: 80, right: 100, bottom: 80, left: 100 },
+      margin: { top: 80, right: 20, bottom: 120, left: 100 },
       timeSteps: [], // 时间步
-      currentStep: 0, // 当前时间步索引
+      startStep: 0, // 时间轴的起始索引
+      endStep: 0, // 时间轴的结束索引
       colorScale: null, // genre 映射到颜色的比例尺
       showTrails: false, // 是否显示 Trails
-      trailStartIndex: null, // Trails 的起始索引
+      selectedGenres: [], // 被选中的 genre 列表
     };
   },
   mounted() {
@@ -55,9 +77,9 @@ export default {
   },
   methods: {
     setChartSize() {
-      this.width = window.innerWidth;
-      this.height = window.innerHeight - 100;
-      this.margin = { top: 80, right: 100, bottom: 80, left: 100 };
+      this.width = window.innerWidth - 300; // 为 legend 留出 250px
+      this.height = window.innerHeight - 200;
+      this.margin = { top: 80, right: 20, bottom: 120, left: 100 };
     },
     resizeChart() {
       this.setChartSize();
@@ -84,20 +106,33 @@ export default {
           new Date(a) - new Date(b)
         );
         this.timeSteps = dates;
+        this.endStep = 0;
 
         console.log("Time Steps:", this.timeSteps);
 
         // 初始化颜色比例尺
         this.createColorScale();
         this.updateData();
+        this.initLegend(); // 初始化 legend
       } catch (error) {
         console.error("Error loading CSV data:", error);
       }
     },
     createColorScale() {
-      const genres = Array.from(new Set(this.data.map((d) => d.reclassified_genre)));
-      this.colorScale = d3.scaleOrdinal().domain(genres).range(d3.schemeTableau10);
-    },
+  const genres = Array.from(new Set(this.data.map((d) => d.reclassified_genre)));
+
+  // 使用更大的调色板
+  const colorPalette = [
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2",
+    "#7f7f7f", "#bcbd22", "#17becf", "#393b79", "#637939", "#8c6d31", "#843c39",
+    "#7b4173", "#5254a3", "#6b6ecf", "#9c9ede", "#6b6ecf", "#dbdb8d", "#393b79",
+    "#122d36"
+  ];
+
+  // 循环颜色以应对更多分类
+  this.colorScale = d3.scaleOrdinal().domain(genres).range(colorPalette);
+  this.selectedGenres = genres; // 初始化为所有 genre
+},
     initChart() {
       const { width, height, margin } = this;
 
@@ -118,33 +153,93 @@ export default {
         .attr("class", "tooltip")
         .style("opacity", 0);
     },
+    initLegend() {
+      const genres = this.colorScale.domain(); // 获取所有的 genre
+      const legendContainer = d3.select(this.$refs.legend);
+
+      // 清空之前的 legend
+      legendContainer.selectAll("*").remove();
+
+      const legend = legendContainer
+    .selectAll(".legend-item")
+    .data(genres)
+    .enter()
+    .append("div")
+    .attr("class", "legend-item")
+    .style("cursor", "pointer") // 添加鼠标指针样式
+    .on("click", (event, genre) => {
+      if (this.selectedGenres.includes(genre)) {
+        this.selectedGenres = this.selectedGenres.filter((g) => g !== genre);
+      } else {
+        this.selectedGenres.push(genre);
+      }
+      this.updateChart(); // 更新图表
+    });
+
+      // 添加颜色方块
+      legend
+        .append("div")
+        .style("background-color", (d) => this.colorScale(d))
+        .style("width", "15px")
+        .style("height", "15px")
+        .style("margin-right", "10px");
+
+      // 添加文字
+      legend
+        .append("span")
+        .text((d) => d)
+        .style("color", "#c7d5e0")
+        .style("font-size", "14px");
+
+        legend
+  .style("cursor", "pointer") // 鼠标指针样式
+  .on("click", (event, genre) => {
+    if (this.selectedGenres.includes(genre)) {
+      this.selectedGenres = this.selectedGenres.filter((g) => g !== genre);
+    } else {
+      this.selectedGenres.push(genre);
+    }
+    this.updateChart(); // 更新图表
+
+    // 更新 legend 样式
+    legend.style("opacity", (d) =>
+      this.selectedGenres.includes(d) ? 1 : 0.4
+    );
+  })
+  .style("opacity", (d) => (this.selectedGenres.includes(d) ? 1 : 0.4)); // 初始样式
+
+    },
+    toggleGenre(genre) {
+  // 切换选中状态
+    if (this.selectedGenres.includes(genre)) {
+    this.selectedGenres = this.selectedGenres.filter((g) => g !== genre);
+  } else {
+    this.selectedGenres.push(genre);
+  }
+
+  // 更新图表
+  this.updateChart();
+},
+
     toggleTrails() {
       this.showTrails = !this.showTrails;
-
-      if (this.showTrails) {
-        this.trailStartIndex = this.currentStep;
-      } else {
-        this.trailStartIndex = null;
-        this.updateTrails();
-      }
       this.updateData();
     },
     updateData() {
-      const currentDate = this.timeSteps[this.currentStep];
-      console.log("Slider shows:", currentDate);
+      const startDate = this.timeSteps[this.startStep];
+      const endDate = this.timeSteps[this.endStep];
+      console.log("Selected Date Range:", startDate, "to", endDate);
 
       const cumulativeDates = this.timeSteps.filter(
-        (date) => new Date(date) <= new Date(currentDate)
+        (date) => new Date(date) >= new Date(startDate) && new Date(date) <= new Date(endDate)
       );
-      console.log("Cumulative Dates:", cumulativeDates);
 
       const cumulativeGames = this.data.filter((d) => cumulativeDates.includes(d.release_date));
-      console.log("Games filtered for current step:", cumulativeGames.length);
 
       const genreStats = d3.rollups(
         cumulativeGames,
         (games) => ({
-          count: games.length, // 累积的游戏总数
+          count: games.length,
           avgPositiveRate: d3.mean(
             games,
             (g) => (g.positive_ratings / (g.positive_ratings + g.negative_ratings)) * 100
@@ -159,55 +254,80 @@ export default {
         ...stats,
       }));
 
-      console.log("Filtered Data:", this.filteredData);
-
-      this.updateTrails();
       this.updateChart();
     },
-    updateTrails() {
-      const { svg, margin, colorScale, showTrails, trailStartIndex, currentStep } = this;
+    updateChart() {
+  const { svg, filteredData, selectedGenres, width, height, margin, colorScale } = this;
 
-      if (!showTrails || trailStartIndex === null) {
-        svg.selectAll(".trail-circle").attr("opacity", 0);
-        return;
-      }
+  // 过滤只显示选中 genre 的数据
+  const filteredForSelectedGenres = filteredData.filter((d) =>
+    selectedGenres.includes(d.genre)
+  );
 
-      const xScale = d3
-        .scaleLinear()
-        .domain([0, 100]) // 好评率范围
-        .range([margin.left, this.width - margin.right]);
+  const xScale = d3
+    .scaleLinear()
+    .domain([0, 100])
+    .range([margin.left, width - margin.right]);
 
-      const yScale = d3
-        .scaleLinear()
-        .domain([0, d3.max(this.filteredData, (d) => d.avgTotalReviews)])
-        .range([this.height - margin.bottom, margin.top]);
+  const yScale = d3
+    .scaleLinear()
+    .domain([0, d3.max(filteredForSelectedGenres, (d) => d.avgTotalReviews || 0)])
+    .range([height - margin.bottom, margin.top]);
 
-      const opacityScale = d3
-        .scaleLinear()
-        .domain([trailStartIndex, currentStep]) // 起点到当前时间步的透明度
-        .range([0.2, 1]);
+  const sizeScale = d3
+    .scaleLinear()
+    .domain([0, d3.max(filteredForSelectedGenres, (d) => d.count || 0)])
+    .range([5, 100]);
 
-      svg
-        .selectAll(".trail-circle")
-        .data(this.filteredData)
-        .join("circle")
-        .attr("class", "trail-circle")
-        .attr("cx", (d) => xScale(d.avgPositiveRate))
-        .attr("cy", (d) => yScale(d.avgTotalReviews))
-        .attr("r", 10)
-        .attr("fill", (d) => colorScale(d.genre))
-        .attr("opacity", (d) => {
-          const timeIndex = this.timeSteps.indexOf(d.release_date);
-          return timeIndex >= trailStartIndex && timeIndex <= currentStep
-            ? opacityScale(timeIndex)
-            : 0;
-        });
-    },
+  // 更新 X 轴
+  svg
+    .select(".x-axis")
+    .call(d3.axisBottom(xScale).ticks(10).tickFormat((d) => `${d}%`))
+    .selectAll("text")
+    .style("fill", "#c7d5e0")
+    .style("font-size", "14px");
+
+  // 更新 Y 轴
+  svg
+    .select(".y-axis")
+    .call(d3.axisLeft(yScale).ticks(5))
+    .selectAll("text")
+    .style("fill", "#c7d5e0")
+    .style("font-size", "14px");
+
+  // 渲染圆点
+  const circles = svg.selectAll(".circle").data(filteredForSelectedGenres, (d) => d.genre);
+
+  circles
+  .exit()
+  .transition()
+  .duration(500) // 动画持续时间
+  .attr("r", 0) // 圆形半径缩小为 0
+  .attr("opacity", 0) // 圆形逐渐消失
+  .remove(); // 完全移除
+
+
+  circles
+    .enter()
+    .append("circle")
+    .attr("class", "circle")
+    .attr("r", 0)
+    .on("mouseover", this.showTooltip)
+    .on("mouseout", this.hideTooltip)
+    .merge(circles)
+    .transition()
+    .duration(500)
+    .attr("cx", (d) => xScale(d.avgPositiveRate))
+    .attr("cy", (d) => yScale(d.avgTotalReviews))
+    .attr("r", (d) => Math.sqrt(d.count) * 5)
+    .attr("fill", (d) => colorScale(d.genre))
+    .attr("opacity", 0.9);
+},
     showTooltip(event, d) {
       const tooltip = this.tooltip;
       tooltip.style("opacity", 1);
       tooltip
-        .html(`
+        .html(` 
           <strong>${d.genre}</strong><br>
           Total Games: ${d.count}<br>
           Avg Positive Rate: ${d.avgPositiveRate.toFixed(2)}%<br>
@@ -219,58 +339,7 @@ export default {
     hideTooltip() {
       this.tooltip.style("opacity", 0);
     },
-    updateChart() {
-      const { svg, filteredData, width, height, margin, colorScale } = this;
-
-      const xScale = d3
-        .scaleLinear()
-        .domain([0, 100]) // X轴：好评率
-        .range([margin.left, width - margin.right]);
-
-      const yScale = d3
-        .scaleLinear()
-        .domain([0, d3.max(filteredData, (d) => d.avgTotalReviews || 0)]) // Y轴：评论总数
-        .range([height - margin.bottom, margin.top]);
-
-      const sizeScale = d3
-        .scaleSqrt()
-        .domain([0, d3.max(filteredData, (d) => d.count || 0)]) // 游戏数量范围
-        .range([5, 80]); // 圆点大小范围
-
-      svg
-        .select(".x-axis")
-        .call(d3.axisBottom(xScale).ticks(10).tickFormat((d) => `${d}%`))
-        .selectAll("text")
-        .style("fill", "#c7d5e0")
-        .style("font-size", "14px");
-
-      svg
-        .select(".y-axis")
-        .call(d3.axisLeft(yScale).ticks(5))
-        .selectAll("text")
-        .style("fill", "#c7d5e0")
-        .style("font-size", "14px");
-
-      const circles = svg.selectAll(".circle").data(filteredData, (d) => d.genre);
-
-      circles.exit().remove();
-
-      circles
-        .enter()
-        .append("circle")
-        .attr("class", "circle")
-        .attr("r", 0)
-        .on("mouseover", this.showTooltip)
-        .on("mouseout", this.hideTooltip)
-        .merge(circles)
-        .transition()
-        .duration(500)
-        .attr("cx", (d) => xScale(d.avgPositiveRate))
-        .attr("cy", (d) => yScale(d.avgTotalReviews))
-        .attr("r", (d) => sizeScale(d.count)) // 使用 count 调整大小
-        .attr("fill", (d) => colorScale(d.genre))
-        .attr("opacity", 0.7);
-    },
   },
 };
 </script>
+
