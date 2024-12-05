@@ -82,6 +82,11 @@ export default {
     window.removeEventListener("resize", this.resizeChart);
   },
   methods: {
+    handleCircleClick(d) {
+      // `d` is the data bound to the clicked circle, e.g. the genre data object
+      // If you have a router set up, you could navigate to a detail page
+      this.$router.push({ name: 'DetailPlot', params: { genre: d.genre }});
+    },
     toggleYAxisLock() {
       this.isYAxisLocked = !this.isYAxisLocked;
 
@@ -504,6 +509,9 @@ export default {
         .attr("r", 0)
         .on("mouseover", this.showTooltip)
         .on("mouseout", this.hideTooltip)
+        .on("click", (event, d) => {
+          this.handleCircleClick(d);
+        })
         .merge(circles)
         .transition()
         .duration(500)
