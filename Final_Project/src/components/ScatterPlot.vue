@@ -31,10 +31,14 @@
         />
         <span class="slider-value">{{ timeSteps[endStep] }}</span>
       </div>
-
-      <button @click="toggleTrails" class="toggle-trails-btn">
-        {{ showTrails ? "Stop Trails" : "Start Trails" }}
-      </button>
+      <div class="button-container">
+        <button @click="toggleYAxisLock" class="action-btn">
+          {{ isYAxisLocked ? "Unlock Y-Axis" : "Lock Y-Axis" }}
+        </button>
+        <button @click="saveSnapshot" class="action-btn" :disabled="!isYAxisLocked">Snapshot
+        </button>
+        <button @click="clearSnapshots" class="action-btn">Clear Snapshots</button>
+      </div>
     </div>
 
     <div class="chart-container">
@@ -61,8 +65,10 @@ export default {
       startStep: 0, // 时间轴的起始索引
       endStep: 0, // 时间轴的结束索引
       colorScale: null, // genre 映射到颜色的比例尺
-      showTrails: false, // 是否显示 Trails
+      snapshots: [], // 保存的快照数据
       selectedGenres: [], // 被选中的 genre 列表
+      isYAxisLocked: false, // 是否锁定 Y 轴
+      yAxisLockValue: null, // 锁定 Y 轴时的最大值
     };
   },
   mounted() {
@@ -76,6 +82,25 @@ export default {
     window.removeEventListener("resize", this.resizeChart);
   },
   methods: {
+    toggleYAxisLock() {
+  this.isYAxisLocked = !this.isYAxisLocked;
+
+  // 如果锁定，动态计算基于当前显示 genres 的最大值
+  if (this.isYAxisLocked) {
+    const filteredForSelectedGenres = this.filteredData.filter((d) =>
+      this.selectedGenres.includes(d.genre)
+    );
+    this.yAxisLockValue = d3.max(
+      filteredForSelectedGenres,
+      (d) => d.avgTotalReviews || 0
+    );
+  } else {
+    // 解锁时重置为动态计算
+    this.yAxisLockValue = null;
+  }
+
+  this.updateChart();
+},
     setChartSize() {
       this.width = window.innerWidth - 300; // 为 legend 留出 250px
       this.height = window.innerHeight - 200;
@@ -133,6 +158,94 @@ export default {
   this.colorScale = d3.scaleOrdinal().domain(genres).range(colorPalette);
   this.selectedGenres = genres; // 初始化为所有 genre
 },
+clearSnapshots() {
+  this.snapshots = []; // 清空快照数组
+  this.updateSnapshots(); // 确保快照的图形从屏幕上移除
+},
+
+saveSnapshot() {
+  if (!this.isYAxisLocked) {
+    alert("Please lock the Y-Axis before taking a snapshot.");
+    return;
+  }
+
+  const snapshot = {
+    data: this.filteredData.filter((d) => this.selectedGenres.includes(d.genre)),
+    startDate: this.timeSteps[this.startStep],
+    endDate: this.timeSteps[this.endStep],
+  };
+  this.snapshots.push(snapshot);
+  this.updateSnapshots(); // 更新快照图像
+},
+  updateSnapshots() {
+    const { svg, snapshots, colorScale, width, height, margin } = this;
+
+    const xScale = d3
+      .scaleLinear()
+      .domain([0, 100])
+      .range([margin.left, width - margin.right]);
+
+    const yScale = d3
+      .scaleLinear()
+      .domain([
+      0,
+      this.isYAxisLocked
+        ? this.yAxisLockValue // 使用动态锁定值
+        : d3.max(
+            snapshots.flatMap((snapshot) =>
+              snapshot.data.filter((d) => this.selectedGenres.includes(d.genre))
+            ),
+            (d) => d.avgTotalReviews || 0
+          ),
+    ])
+      .range([height - margin.bottom, margin.top]);
+
+    // 绘制快照
+    const snapshotCircles = svg
+    .selectAll(".snapshot-circle")
+    .data(
+      snapshots.flatMap((snapshot) =>
+        snapshot.data.map((d) => ({
+          ...d,
+          startDate: snapshot.startDate,
+          endDate: snapshot.endDate,
+        }))
+      )
+    );
+
+    snapshotCircles
+      .enter()
+      .append("circle")
+      .attr("class", "snapshot-circle")
+      .attr("r", 0)
+      .merge(snapshotCircles)
+      .attr("cx", (d) => xScale(d.avgPositiveRate))
+      .attr("cy", (d) => yScale(d.avgTotalReviews))
+      .attr("r", (d) => Math.sqrt(d.count) * 5)
+      .attr("fill", (d) => colorScale(d.genre))
+      .attr("opacity", 1);
+
+    snapshotCircles.exit().remove();
+
+    // 添加快照 Tooltip
+    svg.selectAll(".snapshot-circle")
+      .on("mouseover", (event, d) => {
+        this.tooltip
+          .style("opacity", 1)
+          .html(`
+            <strong>${d.genre}</strong><br>
+            Total Games: ${d.count}<br>
+            Avg Positive Rate: ${d.avgPositiveRate.toFixed(2)}%<br>
+            Avg Total Reviews: ${d.avgTotalReviews.toFixed(2)}<br>
+            Time Range: ${d.startDate} - ${d.endDate}
+          `)
+          .style("left", `${event.pageX + 10}px`)
+          .style("top", `${event.pageY - 10}px`);
+      })
+      .on("mouseout", () => {
+        this.tooltip.style("opacity", 0);
+      });
+  },
     initChart() {
       const { width, height, margin } = this;
 
@@ -217,6 +330,7 @@ export default {
     this.selectedGenres.push(genre);
   }
 
+  
   // 更新图表
   this.updateChart();
 },
@@ -256,14 +370,13 @@ export default {
 
       this.updateChart();
     },
-    updateChart() {
+  updateChart() {
   const { svg, filteredData, selectedGenres, width, height, margin, colorScale } = this;
 
   // 过滤只显示选中 genre 的数据
   const filteredForSelectedGenres = filteredData.filter((d) =>
     selectedGenres.includes(d.genre)
   );
-
   const xScale = d3
     .scaleLinear()
     .domain([0, 100])
@@ -271,8 +384,18 @@ export default {
 
   const yScale = d3
     .scaleLinear()
-    .domain([0, d3.max(filteredForSelectedGenres, (d) => d.avgTotalReviews || 0)])
+    .domain([
+      0,
+      this.isYAxisLocked
+        ? this.yAxisLockValue // 如果锁定，使用锁定值
+        : d3.max(
+            filteredForSelectedGenres, // 只考虑当前显示的 genres
+            (d) => d.avgTotalReviews || 0
+          ),
+    ])
     .range([height - margin.bottom, margin.top]);
+  this.xScale = xScale;
+  this.yScale = yScale;
 
   const sizeScale = d3
     .scaleLinear()
@@ -296,6 +419,7 @@ export default {
     .style("font-size", "14px");
 
   // 渲染圆点
+  this.updateSnapshots();
   const circles = svg.selectAll(".circle").data(filteredForSelectedGenres, (d) => d.genre);
 
   circles
@@ -321,21 +445,24 @@ export default {
     .attr("cy", (d) => yScale(d.avgTotalReviews))
     .attr("r", (d) => Math.sqrt(d.count) * 5)
     .attr("fill", (d) => colorScale(d.genre))
-    .attr("opacity", 0.9);
+    .attr("opacity", 0.5);
 },
-    showTooltip(event, d) {
-      const tooltip = this.tooltip;
-      tooltip.style("opacity", 1);
-      tooltip
-        .html(` 
-          <strong>${d.genre}</strong><br>
-          Total Games: ${d.count}<br>
-          Avg Positive Rate: ${d.avgPositiveRate.toFixed(2)}%<br>
-          Avg Total Reviews: ${d.avgTotalReviews.toFixed(2)}
-        `)
-        .style("left", `${event.pageX + 10}px`)
-        .style("top", `${event.pageY - 10}px`);
-    },
+showTooltip(event, d) {
+  const tooltip = this.tooltip;
+  const startDate = this.timeSteps[this.startStep];
+  const endDate = this.timeSteps[this.endStep];
+  tooltip.style("opacity", 1);
+  tooltip
+    .html(`
+      <strong>${d.genre}</strong><br>
+      Total Games: ${d.count}<br>
+      Avg Positive Rate: ${d.avgPositiveRate.toFixed(2)}%<br>
+      Avg Total Reviews: ${d.avgTotalReviews.toFixed(2)}<br>
+      Time Range: ${startDate} - ${endDate} <!-- 显示时间段 -->
+    `)
+    .style("left", `${event.pageX + 10}px`)
+    .style("top", `${event.pageY - 10}px`);
+},
     hideTooltip() {
       this.tooltip.style("opacity", 0);
     },
