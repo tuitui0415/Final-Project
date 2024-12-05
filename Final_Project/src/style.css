@@ -154,17 +154,6 @@ svg {
   cursor: not-allowed;
 }
 
-.action-btn:disabled:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  left: 100%;
-  margin-left: 5px;
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 5px;
-  border-radius: 3px;
-  font-size: 10px;
-}
 
 .action-btn:hover {
   background-color: #0056b3;
