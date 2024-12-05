@@ -99,13 +99,20 @@ svg {
 }
 
 .legend-container {
+  position: absolute; /* 绝对定位 */
+  top: 100px; /* 距离顶部的距离 */
+  right: 20px; /* 距离右侧的距离 */
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-left: 20px;
-  max-width: 200px;
-  flex-shrink: 0;
+  flex-direction: column; /* 垂直排列 */
+  align-items: flex-start; /* 左对齐 */
+  background-color: #212133; /* 背景颜色 */
+  padding: 10px; /* 内边距 */
+  border: 1px solid #e7e7e7; /* 边框 */
+  border-radius: 5px; /* 圆角 */
+  max-height: 80%; /* 最大高度，防止过长 */
+  overflow-y: auto; /* 启用垂直滚动条 */
 }
+
 
 .legend-item {
   display: flex;
