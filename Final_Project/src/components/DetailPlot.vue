@@ -3,11 +3,11 @@
     <h2>Details for {{ genre }} ({{ startDate }} - {{ endDate }})</h2>
     <div class="controls">
       <div class="button-container">
-        <button @click="toggleYAxisLock" class="action-btn">
+        <button @click="toggleYAxisLock" class="action-btn" :disabled=true>
           {{ isYAxisLocked ? "Unlock Y-Axis" : "Lock Y-Axis" }}
         </button>
-        <button @click="saveSnapshot" class="action-btn" :disabled="!isYAxisLocked">Snapshot</button>
-        <button @click="clearSnapshots" class="action-btn">Clear Snapshots</button>
+        <button @click="saveSnapshot" class="action-btn" :disabled=true>Snapshot</button>
+        <button @click="clearSnapshots" class="action-btn" disabled=true>Clear Snapshots</button>
         <button @click="$router.push({ name: 'Home' })" class="action-btn">Back</button>
       </div>
     </div>
