@@ -4,15 +4,20 @@ Our project aims to address the significant challenge that game developers face 
 The tool aims to support developers by analyzing the characteristics that correlate with high ratings, positive feedback, and trends in popularity. Our objective is to reduce uncertainty in the early design phases, allowing developers to make informed decisions about the core elements of their games. Our platform will serve as a valuable resource for spotting emerging trends and uncovering underutilized elements that could contribute to the success of new games.
 
 ## Functions
+* `Main Chart` Displays a scatter plot dynamically updated based on dataset.
+  * `Time Range Slider` Allows selection of a start and end date to filter data within a specific time range.
+    * `Start time` Adjust the Start Time slider to set the beginning of the range. 
+    * `Start time` Adjust the End Time slider to set the end of the range. The range dynamically adjusts to the start time.
+  * `Snapshot` Saves the current state of filtered data for later review.
+    * `Y-Axis Lock ` Locks the maximum value of the Y-axis for consistent comparisons across data snapshots. Click the “Unlock Y-Axis” button to unlock the Y-axis.
+    * `Clear Snapshots ` Deletes all saved snapshots.
+  * `Interactive Legend` Allows filtering data by category through an interactive legend.
 
-* `./src/main.ts` is the root script file for Vue.js that instatinates our single page application.
-* `./src/App.vue` is the root file for all **development** needs and is also where we manage the layout and load in components.
-* `./src/types.ts` is usually where we declare our customized types if you're planning to use it.
-* `./src/stores/` is where we manage the stores if you're planning to use it. The store is responsible for global state management.
-* `./src/components/` is where we create the components. You may have multiple components depends on your design.
-  * `Example.vue` shows how to read `.csv` and `.json`, how component size is being watched, how a bar chart is created, and how the component updates if there are any changes. 
-  * `Notes.vue` shows the difference of **state** and **prop**, how to use Vuetify, and how a local state updates based on interaction.
-  * `NotesWithStore.vue` is equivalent to `Notes.vue`, excepts it is written in Composition API and uses store.
+* `Game Categories` Displays a scatter plot dynamically updated based on deeper data.
+  * `close` Back to the Main Chart
+  * `Pie Chart Visualization` Click the circle in the scatter plot to get into this mode. Shows the most reviewd game in specific period and genre as well.
+    * `bullets` Use the bullets feature to watch player reviews of the game for inspiration.
+      * `Play/Pause Bullets` If you feel that you are disturbing the observation, you can choose to turn off this feature by clicking this button.
 
 ## Libraries Installed in this Framework
  * D3.js v7 for visualization
