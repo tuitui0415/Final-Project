@@ -2,7 +2,6 @@
   <div class="container">
     <h2>Details for {{ genre }} ({{ startDate }} - {{ endDate }})</h2>
     <div class="controls">
-      <!-- We omit the start/end sliders since we already have the date range -->
       <div class="button-container">
         <button @click="toggleYAxisLock" class="action-btn">
           {{ isYAxisLocked ? "Unlock Y-Axis" : "Lock Y-Axis" }}
@@ -16,13 +15,23 @@
       <svg ref="chart"></svg>
       <div ref="legend" class="legend-container"></div>
     </div>
+    <PieChart
+  v-if="showPieChart"
+  :data="pieChartData"
+  :title="pieChartTitle"
+  @close="closePieChart"
+/>
   </div>
 </template>
 
 <script>
 import * as d3 from "d3";
+import PieChart from "/src/components/PieChart.vue";
 
 export default {
+  components: {
+    PieChart,
+  },
   data() {
     return {
       genre: null,
@@ -39,6 +48,9 @@ export default {
       selectedGameTypes: [],
       isYAxisLocked: false,
       yAxisLockValue: null,
+      showPieChart: false, // 控制 PieChart 的显示
+    pieChartData: [], // 存储饼图的数据
+    pieChartTitle: "", // 饼图的标题
     };
   },
   mounted() {
@@ -57,6 +69,31 @@ export default {
     window.removeEventListener("resize", this.resizeChart);
   },
   methods: {
+    showGamePieChart(gameType) {
+    const mostReviewedGame = this.data
+      .filter((d) => d.game_type === gameType)
+      .reduce((max, game) =>
+        game.positive_ratings + game.negative_ratings >
+        max.positive_ratings + max.negative_ratings
+          ? game
+          : max,
+        { positive_ratings: 0, negative_ratings: 0 }
+      );
+
+    if (!mostReviewedGame) return;
+
+    // 设置饼图数据和标题
+    this.pieChartData = [
+      { category: "Positive", value: mostReviewedGame.positive_ratings },
+      { category: "Negative", value: mostReviewedGame.negative_ratings },
+    ];
+    this.pieChartTitle = `Most Reviewed Game: ${mostReviewedGame.name}`;
+    this.showPieChart = true;
+  },
+
+  closePieChart() {
+    this.showPieChart = false; // 关闭饼图
+  },
     setChartSize() {
       this.width = window.innerWidth - 300; 
       this.height = window.innerHeight - 200;
@@ -389,6 +426,9 @@ export default {
         .append("circle")
         .attr("class", "circle")
         .attr("r", 0)
+        .on("click", (event, d) => {
+    this.showGamePieChart(d.game_type); // 点击触发饼图
+  })
         .on("mouseover", this.showTooltip)
         .on("mouseout", this.hideTooltip)
         .merge(circles)
