@@ -53,21 +53,21 @@ import * as d3 from "d3";
 export default {
   data() {
     return {
-      data: [], // 原始数据
-      filteredData: [], // 当前时间步的数据
-      trailsData: [], // 累积轨迹的数据
-      svg: null, // SVG 容器
+      data: [],
+      filteredData: [],
+      trailsData: [],
+      svg: null,
       width: 0,
       height: 0,
       margin: { top: 80, right: 20, bottom: 120, left: 100 },
-      timeSteps: [], // 时间步
-      startStep: 0, // 时间轴的起始索引
-      endStep: 0, // 时间轴的结束索引
-      colorScale: null, // genre 映射到颜色的比例尺
-      snapshots: [], // 保存的快照数据
-      selectedGenres: [], // 被选中的 genre 列表
-      isYAxisLocked: false, // 是否锁定 Y 轴
-      yAxisLockValue: null, // 锁定 Y 轴时的最大值
+      timeSteps: [],
+      startStep: 0,
+      endStep: 0,
+      colorScale: null,
+      snapshots: [],
+      selectedGenres: [],
+      isYAxisLocked: false,
+      yAxisLockValue: null,
     };
   },
   mounted() {
@@ -98,8 +98,6 @@ export default {
     },
     toggleYAxisLock() {
       this.isYAxisLocked = !this.isYAxisLocked;
-
-      // 如果锁定，动态计算基于当前显示 genres 的最大值
       if (this.isYAxisLocked) {
         const filteredForSelectedGenres = this.filteredData.filter((d) =>
           this.selectedGenres.includes(d.genre)
@@ -109,14 +107,13 @@ export default {
           (d) => d.avgTotalReviews || 0
         );
       } else {
-        // 解锁时重置为动态计算
         this.yAxisLockValue = null;
       }
 
       this.updateChart();
     },
     setChartSize() {
-      this.width = window.innerWidth - 300; // 为 legend 留出 250px
+      this.width = window.innerWidth - 300;
       this.height = window.innerHeight - 200;
       this.margin = { top: 80, right: 20, bottom: 120, left: 100 };
     },
@@ -132,7 +129,7 @@ export default {
         const rawData = await d3.csv("/data/game_with_review.csv", (d) => ({
           appid: parseInt(d.appid),
           name: d.name.trim(),
-          release_date: new Date(d.release_date.trim()).toISOString().slice(0, 10), // 标准化日期
+          release_date: new Date(d.release_date.trim()).toISOString().slice(0, 10),
           reclassified_genre: d.reclassified_genre.trim(),
           positive_ratings: +d.positive_ratings,
           negative_ratings: +d.negative_ratings,
@@ -140,7 +137,6 @@ export default {
 
         this.data = rawData;
 
-        // 生成时间步
         const dates = [...new Set(rawData.map((d) => d.release_date))].sort((a, b) =>
           new Date(a) - new Date(b)
         );
@@ -149,18 +145,15 @@ export default {
 
         console.log("Time Steps:", this.timeSteps);
 
-        // 初始化颜色比例尺
         this.createColorScale();
         this.updateData();
-        this.initLegend(); // 初始化 legend
+        this.initLegend(); 
       } catch (error) {
         console.error("Error loading CSV data:", error);
       }
     },
     createColorScale() {
       const genres = Array.from(new Set(this.data.map((d) => d.reclassified_genre)));
-
-      // 使用更大的调色板
       const colorPalette = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2",
         "#7f7f7f", "#bcbd22", "#17becf", "#393b79", "#637939", "#8c6d31", "#843c39",
@@ -168,13 +161,12 @@ export default {
         "#122d36"
       ];
 
-      // 循环颜色以应对更多分类
       this.colorScale = d3.scaleOrdinal().domain(genres).range(colorPalette);
-      this.selectedGenres = genres; // 初始化为所有 genre
+      this.selectedGenres = genres;
     },
     clearSnapshots() {
-      this.snapshots = []; // 清空快照数组
-      this.updateSnapshots(); // 确保快照的图形从屏幕上移除
+      this.snapshots = [];
+      this.updateSnapshots(); 
     },
     saveSnapshot() {
       if (!this.isYAxisLocked) {
@@ -188,7 +180,7 @@ export default {
         endDate: this.timeSteps[this.endStep],
       };
       this.snapshots.push(snapshot);
-      this.updateSnapshots(); // 更新快照图像
+      this.updateSnapshots(); 
     },
     updateSnapshots() {
       const { svg, snapshots, colorScale, width, height, margin } = this;
@@ -203,7 +195,7 @@ export default {
         .domain([
         0,
         this.isYAxisLocked
-          ? this.yAxisLockValue // 使用动态锁定值
+          ? this.yAxisLockValue
           : d3.max(
               snapshots.flatMap((snapshot) =>
                 snapshot.data.filter((d) => this.selectedGenres.includes(d.genre))
@@ -213,7 +205,6 @@ export default {
       ])
         .range([height - margin.bottom, margin.top]);
 
-      // 绘制快照
       const snapshotCircles = svg
       .selectAll(".snapshot-circle")
       .data(
@@ -240,7 +231,6 @@ export default {
 
       snapshotCircles.exit().remove();
 
-      // 添加快照 Tooltip
       svg.selectAll(".snapshot-circle")
         .on("mouseover", (event, d) => {
           this.tooltip
@@ -280,10 +270,9 @@ export default {
         .style("opacity", 0);
     },
     initLegend() {
-      const genres = this.colorScale.domain(); // 获取所有的 genre
+      const genres = this.colorScale.domain(); 
       const legendContainer = d3.select(this.$refs.legend);
 
-      // 清空之前的 legend
       legendContainer.selectAll("*").remove();
 
       const legend = legendContainer
@@ -292,17 +281,16 @@ export default {
         .enter()
         .append("div")
         .attr("class", "legend-item")
-        .style("cursor", "pointer") // 添加鼠标指针样式
+        .style("cursor", "pointer")
         .on("click", (event, genre) => {
           if (this.selectedGenres.includes(genre)) {
             this.selectedGenres = this.selectedGenres.filter((g) => g !== genre);
           } else {
             this.selectedGenres.push(genre);
           }
-          this.updateChart(); // 更新图表
+          this.updateChart();
         });
 
-      // 添加颜色方块
       legend
         .append("div")
         .style("background-color", (d) => this.colorScale(d))
@@ -310,7 +298,6 @@ export default {
         .style("height", "15px")
         .style("margin-right", "10px");
 
-      // 添加文字
       legend
         .append("span")
         .text((d) => d)
@@ -318,30 +305,28 @@ export default {
         .style("font-size", "14px");
 
       legend
-        .style("cursor", "pointer") // 鼠标指针样式
+        .style("cursor", "pointer")
         .on("click", (event, genre) => {
           if (this.selectedGenres.includes(genre)) {
             this.selectedGenres = this.selectedGenres.filter((g) => g !== genre);
           } else {
             this.selectedGenres.push(genre);
           }
-          this.updateChart(); // 更新图表
+          this.updateChart();
 
-          // 更新 legend 样式
           legend.style("opacity", (d) =>
             this.selectedGenres.includes(d) ? 1 : 0.4
           );
         })
-        .style("opacity", (d) => (this.selectedGenres.includes(d) ? 1 : 0.4)); // 初始样式
+        .style("opacity", (d) => (this.selectedGenres.includes(d) ? 1 : 0.4));
     },
     toggleGenre(genre) {
-      // 切换选中状态
+
       if (this.selectedGenres.includes(genre)) {
         this.selectedGenres = this.selectedGenres.filter((g) => g !== genre);
       } else {
         this.selectedGenres.push(genre);
       }
-      // 更新图表
       this.updateChart();
     },
     toggleTrails() {
@@ -377,35 +362,26 @@ export default {
         ...stats,
       }));
 
-      // Sort filteredData by count in descending order
       this.filteredData.sort((a, b) => b.count - a.count);
 
       this.updateChart();
-      this.updateLegend(); // Call a new method to update the legend after data changes
+      this.updateLegend();
     },
     updateLegend() {
       const legendContainer = d3.select(this.$refs.legend);
-
-      // Create a map from genre to data object for quick lookup.
       const genreDataMap = new Map(this.filteredData.map(d => [d.genre, d]));
-
-      // Get all genres from the color scale domain.
       const allGenres = this.colorScale.domain();
-
-      // Sort all genres by their count value (from filteredData if available, otherwise 0).
       const sortedGenres = allGenres.sort((a, b) => {
         const aVal = genreDataMap.has(a) ? genreDataMap.get(a).count : 0;
         const bVal = genreDataMap.has(b) ? genreDataMap.get(b).count : 0;
-        return bVal - aVal; // Sort descending by count
+        return bVal - aVal;
       });
 
-      // Filter to only show genres that have count > 0
       const visibleGenres = sortedGenres.filter(genre => {
         const val = genreDataMap.has(genre) ? genreDataMap.get(genre).count : 0;
         return val > 0;
       });
 
-      // Clear old legend
       legendContainer.selectAll("*").remove();
 
       const legend = legendContainer
@@ -417,43 +393,35 @@ export default {
         .attr("class", "legend-item")
         .style("cursor", "pointer")
         .on("click", (event, genre) => {
-          // Toggle the genre selection
           if (this.selectedGenres.includes(genre)) {
             this.selectedGenres = this.selectedGenres.filter(g => g !== genre);
           } else {
             this.selectedGenres.push(genre);
           }
-
-          // Update chart and legend after toggling
           this.updateChart();
           this.updateLegend();
         });
 
-      // Add the colored square
       legendEnter.append("div")
         .style("background-color", d => this.colorScale(d))
         .style("width", "15px")
         .style("height", "15px")
         .style("margin-right", "10px");
 
-      // Add the genre label
       legendEnter.append("span")
         .text(d => d)
         .style("color", "#c7d5e0")
         .style("font-size", "14px");
 
-      // Merge enters and updates, then set opacity based on selection
       legendEnter.merge(legend)
         .style("opacity", d => this.selectedGenres.includes(d) ? 1 : 0.4);
 
-      // Remove any exited elements
       legend.exit().remove();
     },
 
     updateChart() {
       const { svg, filteredData, selectedGenres, width, height, margin, colorScale } = this;
 
-      // 过滤只显示选中 genre 的数据
       const filteredForSelectedGenres = filteredData.filter((d) =>
         selectedGenres.includes(d.genre)
       );
@@ -467,9 +435,9 @@ export default {
         .domain([
           0,
           this.isYAxisLocked
-            ? this.yAxisLockValue // 如果锁定，使用锁定值
+            ? this.yAxisLockValue
             : d3.max(
-                filteredForSelectedGenres, // 只考虑当前显示的 genres
+                filteredForSelectedGenres,
                 (d) => d.avgTotalReviews || 0
               ),
         ])
@@ -482,7 +450,6 @@ export default {
         .domain([0, d3.max(filteredForSelectedGenres, (d) => d.count || 0)])
         .range([5, 100]);
 
-      // 更新 X 轴
       svg
         .select(".x-axis")
         .call(d3.axisBottom(xScale).ticks(10).tickFormat((d) => `${d}%`))
@@ -490,7 +457,6 @@ export default {
         .style("fill", "#c7d5e0")
         .style("font-size", "14px");
 
-      // 更新 Y 轴
       svg
         .select(".y-axis")
         .call(d3.axisLeft(yScale).ticks(5))
@@ -498,17 +464,17 @@ export default {
         .style("fill", "#c7d5e0")
         .style("font-size", "14px");
 
-      // 渲染圆点
+
       this.updateSnapshots();
       const circles = svg.selectAll(".circle").data(filteredForSelectedGenres, (d) => d.genre);
 
       circles
       .exit()
       .transition()
-      .duration(500) // 动画持续时间
-      .attr("r", 0) // 圆形半径缩小为 0
-      .attr("opacity", 0) // 圆形逐渐消失
-      .remove(); // 完全移除
+      .duration(500)
+      .attr("r", 0)
+      .attr("opacity", 0)
+      .remove();
 
 
       circles
@@ -529,8 +495,6 @@ export default {
         .attr("r", (d) => Math.sqrt(d.count) * 5)
         .attr("fill", (d) => colorScale(d.genre))
         .attr("opacity", 0.5);
-
-      // After updating the chart, re-update the legend to reflect current sorting
       this.updateLegend();
     },
     showTooltip(event, d) {

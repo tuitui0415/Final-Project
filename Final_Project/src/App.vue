@@ -1,6 +1,5 @@
 <template>
   <div id="app">
-    <!-- <ScatterPlot /> -->
     <router-view></router-view>
   </div>
 </template>

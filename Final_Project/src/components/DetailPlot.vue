@@ -3,18 +3,19 @@
     <h2>Details for {{ genre }} ({{ startDate }} - {{ endDate }})</h2>
     <div class="controls">
       <div class="button-container">
-        <button @click="toggleYAxisLock" class="action-btn" :disabled=true>
-          {{ isYAxisLocked ? "Unlock Y-Axis" : "Lock Y-Axis" }}
-        </button>
-        <button @click="saveSnapshot" class="action-btn" :disabled=true>Snapshot</button>
-        <button @click="clearSnapshots" class="action-btn" disabled=true>Clear Snapshots</button>
         <button @click="$router.push({ name: 'Home' })" class="action-btn">Back</button>
+        <button @click="toggleBulletScreen" class="action-btn">
+    {{ isBulletPlaying ? "Pause Bullets" : "Play Bullets" }}
+  </button>
       </div>
     </div>
     <div class="chart-container">
       <svg ref="chart"></svg>
       <div ref="legend" class="legend-container"></div>
+      <div ref="bulletScreen" class="bullet-screen-container"></div>
     </div>
+    
+
     <PieChart
       v-if="showPieChart"
       :data="pieChartData"
@@ -37,8 +38,8 @@ export default {
       genre: null,
       startDate: null,
       endDate: null,
-      data: [], // Filtered data by genre & date from the route
-      filteredData: [], // Aggregated data by game_type
+      data: [],
+      filteredData: [], 
       svg: null, 
       width: 0,
       height: 0,
@@ -48,13 +49,15 @@ export default {
       selectedGameTypes: [],
       isYAxisLocked: false,
       yAxisLockValue: null,
-      showPieChart: false, // 控制 PieChart 的显示
-      pieChartData: [], // 存储饼图的数据
-      pieChartTitle: "", // 饼图的标题
+      showPieChart: false,
+      pieChartData: [],
+      pieChartTitle: "",
+      fullReviews: [],
+      isBulletPlaying: true,
+      bulletTimeouts: [],
     };
   },
   mounted() {
-    // Retrieve parameters from the route
     this.genre = this.$route.params.genre;
     this.startDate = new Date(this.$route.params.startDate.trim()).toISOString().slice(0, 10);
     this.endDate = new Date(this.$route.params.endDate.trim()).toISOString().slice(0, 10);
@@ -64,6 +67,7 @@ export default {
     this.initChart();
 
     window.addEventListener("resize", this.resizeChart);
+    
   },
   beforeDestroy() {
     window.removeEventListener("resize", this.resizeChart);
@@ -82,7 +86,6 @@ export default {
 
       if (!mostReviewedGame) return;
 
-      // 设置饼图数据和标题
       this.pieChartData = [
         { category: "Positive", value: mostReviewedGame.positive_ratings },
         { category: "Negative", value: mostReviewedGame.negative_ratings },
@@ -91,13 +94,26 @@ export default {
       this.showPieChart = true;
     },
     closePieChart() {
-      this.showPieChart = false; // 关闭饼图
+      this.showPieChart = false;
     },
     setChartSize() {
       this.width = window.innerWidth - 300; 
       this.height = window.innerHeight - 200;
       this.margin = { top: 80, right: 20, bottom: 120, left: 100 };
     },
+    toggleBulletScreen() {
+    this.isBulletPlaying = !this.isBulletPlaying;
+
+    if (this.isBulletPlaying) {
+      this.bulletTimeouts.forEach((timeout) => clearTimeout(timeout));
+      this.bulletTimeouts = [];
+    } else {
+      this.displayBulletScreen(this.currentAppId);
+    }
+  },
+    getReviewsByAppId(appid) {
+    return this.fullReviews.filter((review) => review.app_id === appid);
+  },
     resizeChart() {
       this.setChartSize();
       d3.select(this.$refs.chart)
@@ -117,35 +133,72 @@ export default {
           game_type: d.game_type.trim(),
         }));
 
-        // Filter to the selected genre and date range
+        const reviewData = await d3.csv("/data/full_user_review10.csv", (d) => ({
+      app_id: parseInt(d.app_id), 
+      review_text: d.review_text.trim(),
+      review_score: parseInt(d.review_score), 
+    }));
         this.data = rawData.filter(
           (game) =>
             game.genre === this.genre &&
             game.release_date >= this.startDate &&
             game.release_date <= this.endDate
         );
+        this.fullReviews = reviewData;
 
-        // Initialize color scale based on game_type
         this.createColorScale();
 
-        // Aggregate data by game_type
         this.updateData();
 
-        // Initialize legend
         this.initLegend();
       } catch (error) {
         console.error("Error loading CSV data:", error);
       }
     },
+    displayBulletScreen(appid) {
+  const reviews = this.getReviewsByAppId(appid);
+  const bulletScreen = this.$refs.bulletScreen;
+
+  bulletScreen.innerHTML = "";
+  this.bulletTimeouts.forEach((timeout) => clearTimeout(timeout));
+  this.bulletTimeouts = [];
+
+  let delay = 0;
+  const fixedSpeed = 100;
+
+  reviews.forEach((review, index) => {
+    const timeoutId = setTimeout(() => {
+      if (!this.isBulletPlaying) return;
+
+      const div = document.createElement("div");
+      div.className = "bullet-screen-text";
+      const textWidth = div.offsetWidth || review.review_text.length * 10;
+      const screenWidth = bulletScreen.offsetWidth || window.innerWidth;
+      const animationDuration = (textWidth + screenWidth) / fixedSpeed;
+
+      div.style.animationDuration = `${animationDuration}s`;
+      div.style.top = `${Math.random() * 80 + 10}%`;
+      div.textContent = review.review_text;
+
+      bulletScreen.appendChild(div);
+      div.addEventListener("animationend", () => {
+        bulletScreen.removeChild(div);
+      });
+    }, delay);
+
+    this.bulletTimeouts.push(timeoutId);
+
+    delay += 2000;
+  });
+},
     createColorScale() {
       const gameTypes = Array.from(new Set(this.data.map((d) => d.game_type)));
-      // A palette for game_types. You can add more colors if needed.
       const colorPalette = [
         "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b",
         "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"
       ];
       this.colorScale = d3.scaleOrdinal().domain(gameTypes).range(colorPalette);
-      this.selectedGameTypes = gameTypes; // Initially select all
+      this.selectedGameTypes = gameTypes;
     },
     toggleYAxisLock() {
       this.isYAxisLocked = !this.isYAxisLocked;
@@ -306,10 +359,8 @@ export default {
     updateLegend() {
       const legendContainer = d3.select(this.$refs.legend);
 
-      // Map from game_type to data object
       const typeDataMap = new Map(this.filteredData.map(d => [d.game_type, d]));
 
-      // Sort gameTypes by count desc
       const allGameTypes = this.colorScale.domain();
       const sortedGameTypes = allGameTypes.sort((a, b) => {
         const aVal = typeDataMap.has(a) ? typeDataMap.get(a).count : 0;
@@ -359,7 +410,6 @@ export default {
       legend.exit().remove();
     },
     updateData() {
-      // Since data is already filtered by genre and date, we just aggregate by game_type:
       const gameTypeStats = d3.rollups(
         this.data,
         (games) => ({
@@ -374,8 +424,6 @@ export default {
         game_type,
         ...stats,
       }));
-
-      // Sort by count
       this.filteredData.sort((a, b) => b.count - a.count);
 
       this.updateChart();
@@ -397,7 +445,6 @@ export default {
       this.xScale = xScale;
       this.yScale = yScale;
 
-      // Update Axes
       svg.select(".x-axis")
         .call(d3.axisBottom(xScale).ticks(10).tickFormat((d) => `${d}%`))
         .selectAll("text")
@@ -425,9 +472,15 @@ export default {
         .append("circle")
         .attr("class", "circle")
         .attr("r", 0)
+
         .on("click", (event, d) => {
-          this.showGamePieChart(d.game_type); // 点击触发饼图
-        })
+          
+    const mostReviewedGame = this.data.find((game) => game.game_type === d.game_type);
+    if (mostReviewedGame) {
+      this.displayBulletScreen(mostReviewedGame.appid);
+    }
+    this.showGamePieChart(d.game_type);
+  })
         .on("mouseover", this.showTooltip)
         .on("mouseout", this.hideTooltip)
         .merge(circles)
@@ -467,5 +520,4 @@ export default {
 .chart-container {
   padding-top: 135px;
 }
-/* Reuse the same styles from plot 1's CSS if available */
 </style>

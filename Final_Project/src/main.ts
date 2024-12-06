@@ -3,7 +3,7 @@ import './style.css'
 import App from './App.vue'
 
 import { createPinia, PiniaVuePlugin } from 'pinia'
-import router from './router';  // Import the router
+import router from './router';
 
 import 'vuetify/styles'
 import { createVuetify } from 'vuetify'
@@ -23,5 +23,5 @@ const pinia = createPinia();
 const app = createApp(App);
 app.use(vuetify)
 app.use(router)
-app.use(createPinia()) // Only needed if you are using Pinia
+app.use(createPinia())
 app.mount('#app')
