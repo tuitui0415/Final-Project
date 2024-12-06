@@ -84,10 +84,6 @@ export default {
   methods: {
     handleCircleClick(d) {
       this.hideTooltip();
-
-      //console.log("filtered data: ", this.filterGenre(d.genre));
-      console.log("data: ", this.data);
-      console.log("d: ", d);
       const startDate = this.timeSteps[this.startStep];
       const endDate = this.timeSteps[this.endStep];
       console.log("Selected Date Range:", startDate, "to", endDate);
@@ -538,22 +534,22 @@ export default {
       // After updating the chart, re-update the legend to reflect current sorting
       this.updateLegend();
     },
-showTooltip(event, d) {
-  const tooltip = this.tooltip;
-  const startDate = this.timeSteps[this.startStep];
-  const endDate = this.timeSteps[this.endStep];
-  tooltip.style("opacity", 1);
-  tooltip
-    .html(`
-      <strong>${d.genre}</strong><br>
-      Total Games: ${d.count}<br>
-      Avg Positive Rate: ${d.avgPositiveRate.toFixed(2)}%<br>
-      Avg Total Reviews: ${d.avgTotalReviews.toFixed(2)}<br>
-      Time Range: ${startDate} - ${endDate} <!-- 显示时间段 -->
-    `)
-    .style("left", `${event.pageX + 10}px`)
-    .style("top", `${event.pageY - 10}px`);
-},
+    showTooltip(event, d) {
+      const tooltip = this.tooltip;
+      const startDate = this.timeSteps[this.startStep];
+      const endDate = this.timeSteps[this.endStep];
+      tooltip.style("opacity", 1);
+      tooltip
+        .html(`
+          <strong>${d.genre}</strong><br>
+          Total Games: ${d.count}<br>
+          Avg Positive Rate: ${d.avgPositiveRate.toFixed(2)}%<br>
+          Avg Total Reviews: ${d.avgTotalReviews.toFixed(2)}<br>
+          Time Range: ${startDate} - ${endDate} <!-- 显示时间段 -->
+        `)
+        .style("left", `${event.pageX + 10}px`)
+        .style("top", `${event.pageY - 10}px`);
+    },
     hideTooltip() {
       this.tooltip.style("opacity", 0);
     },

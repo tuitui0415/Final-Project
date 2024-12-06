@@ -16,51 +16,93 @@ export default {
       genre: null,
       startDate: null,
       endDate: null,
+      data: [], // 原始数据
+      filteredData: [], // 当前时间步的数据
+      trailsData: [], // 累积轨迹的数据
+      svg: null, // SVG 容器
+      width: 0,
+      height: 0,
+      margin: { top: 80, right: 20, bottom: 120, left: 100 },
+      timeSteps: [], // 时间步
+      startStep: 0, // 时间轴的起始索引
+      endStep: 0, // 时间轴的结束索引
+      colorScale: null, // genre 映射到颜色的比例尺
+      snapshots: [], // 保存的快照数据
+      selectedGenres: [], // 被选中的 genre 列表
+      isYAxisLocked: false, // 是否锁定 Y 轴
+      yAxisLockValue: null, // 锁定 Y 轴时的最大值
     };
   },
   mounted() {
     // Retrieve parameters from the route
     this.genre = this.$route.params.genre;
-    this.startDate = this.$route.params.startDate;
-    this.endDate = this.$route.params.endDate;
+    this.startDate = new Date(this.$route.params.startDate.trim()).toISOString().slice(0, 10);
+    this.endDate = new Date(this.$route.params.endDate.trim()).toISOString().slice(0, 10);
 
-    console.log("Genre:", this.genre);
-    console.log("Start Date:", this.startDate);
-    console.log("End Date:", this.endDate);
-
-    // Use the parameters to fetch or filter the data
-    this.createVisualization();
+    this.setChartSize();
+    this.loadCSVData();
+    //this.initChart();
   },
   methods: {
-    createVisualization() {
-      // Example D3 visualization setup
-      const data = this.getFilteredData(); // Replace with your actual data retrieval/filtering logic
-
-      const svg = d3
-        .select("#detail-plot")
-        .append("svg")
-        .attr("width", 600)
-        .attr("height", 400);
-
-      // Example visualization
-      svg
-        .selectAll("circle")
-        .data(data)
-        .enter()
-        .append("circle")
-        .attr("cx", (d, i) => i * 50 + 50)
-        .attr("cy", 200)
-        .attr("r", 20)
-        .style("fill", "steelblue");
+    setChartSize() {
+      this.width = window.innerWidth - 300; // 为 legend 留出 250px
+      this.height = window.innerHeight - 200;
+      this.margin = { top: 80, right: 20, bottom: 120, left: 100 };
     },
-    getFilteredData() {
-      // Replace this with your actual data filtering logic
-      // Use this.genre, this.startDate, this.endDate to filter data
-      return [
-        { name: "Example1", value: 10 },
-        { name: "Example2", value: 20 },
-        { name: "Example3", value: 30 },
-      ];
+    async loadCSVData() {
+      try {
+        const rawData = await d3.csv("/data/game_with_review.csv", (d) => ({
+          appid: parseInt(d.appid),
+          name: d.name.trim(),
+          release_date: new Date(d.release_date.trim()).toISOString().slice(0, 10), // 标准化日期
+          genre: d.reclassified_genre.trim(),
+          positive_ratings: +d.positive_ratings,
+          negative_ratings: +d.negative_ratings,
+        }));
+
+        this.data = rawData.filter(game => 
+          (game.genre === this.genre) &&
+          (game.release_date >= this.startDate) &&
+          (game.release_date <= this.endDate)
+        );
+        console.log("new data: ", this.data);
+
+        // 生成时间步
+        const dates = [...new Set(rawData.map((d) => d.release_date))].sort((a, b) =>
+          new Date(a) - new Date(b)
+        );
+        this.timeSteps = dates;
+        this.endStep = 0;
+
+        console.log("Time Steps:", this.timeSteps);
+
+        // 初始化颜色比例尺
+        //this.createColorScale();
+        //this.updateData();
+        //this.initLegend(); // 初始化 legend
+      } catch (error) {
+        console.error("Error loading CSV data:", error);
+      }
+    },
+    initChart() {
+      const { width, height, margin } = this;
+
+      this.svg = d3
+        .select(this.$refs.chart)
+        .attr("width", width)
+        .attr("height", height);
+
+      this.svg
+        .append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0, ${height - margin.bottom})`);
+      this.svg.append("g").attr("class", "y-axis").attr("transform", `translate(${margin.left}, 0)`);
+
+      this.tooltip = d3
+        .select("body")
+        .append("div")
+        .attr("class", "tooltip")
+        .style("opacity", 0);
     },
   },
 };
