@@ -1,14 +1,9 @@
 # Steam Game Development Helper
 
+Our project aims to address the significant challenge that game developers face when creating new games, helping them identify game elements that match their goals. 
+The tool aims to support developers by analyzing the characteristics that correlate with high ratings, positive feedback, and trends in popularity. Our objective is to reduce uncertainty in the early design phases, allowing developers to make informed decisions about the core elements of their games. Our platform will serve as a valuable resource for spotting emerging trends and uncovering underutilized elements that could contribute to the success of new games.
 
-This is a template in Vue.js and TypeScript. Vue 3.0 sits between React and basic JavaScript depending on the developers comfort level. For this class we stick with [Options API](https://vuejs.org/api/#options-api) rather than Composition API (not required so you can switch depending on how you feel). 
-
-If you want to use Vue.js but not with TypeScript, just remove any type specifications from the `Example.vue` and `Notes.vue`. You can always refer to `VanillaJS-Template/example.js` for this migration.
-
-
-## Files You Have to Care about
-
-`package.json` is where we manage the libraries we installed. Besides this, most of the files you can ignore, but **the files under `./src/` are your concern**.
+## Functions
 
 * `./src/main.ts` is the root script file for Vue.js that instatinates our single page application.
 * `./src/App.vue` is the root file for all **development** needs and is also where we manage the layout and load in components.
