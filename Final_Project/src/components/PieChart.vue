@@ -34,48 +34,59 @@
       },
     },
     methods: {
-      renderPieChart() {
-        const data = this.data;
-  
-        d3.select(this.$refs.piechart).selectAll("*").remove();
-  
-        const width = 300,
-          height = 300,
-          radius = Math.min(width, height) / 2;
-  
-        const svg = d3
-          .select(this.$refs.piechart)
-          .attr("width", width)
-          .attr("height", height)
-          .append("g")
-          .attr("transform", `translate(${width / 2}, ${height / 2})`);
-  
-        const color = d3.scaleOrdinal()
-          .domain(data.map((d) => d.category))
-          .range(["#1f77b4", "#ff7f0e"]);
-  
-        const pie = d3.pie().value((d) => d.value);
-        const arc = d3.arc().innerRadius(0).outerRadius(radius);
-  
-        svg
-          .selectAll("path")
-          .data(pie(data))
-          .enter()
-          .append("path")
-          .attr("d", arc)
-          .attr("fill", (d) => color(d.data.category))
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 2);
-  
-        svg
-          .selectAll("text")
-          .data(pie(data))
-          .enter()
-          .append("text")
-          .attr("transform", (d) => `translate(${arc.centroid(d)})`)
-          .attr("text-anchor", "middle")
-          .text((d) => `${d.data.category}: ${d.data.value}`);
-      },
+        renderPieChart() {
+  const data = this.data;
+
+  // 清空之前的图表
+  d3.select(this.$refs.piechart).selectAll("*").remove();
+
+  // 定义饼图固定大小
+  const radius = 150; // 饼图的固定半径
+  const svgWidth = 400; // 容器宽度（可调整）
+  const svgHeight = 400; // 容器高度（可调整）
+
+  // 创建 SVG 容器并设置宽高
+  const svg = d3
+    .select(this.$refs.piechart)
+    .attr("width", svgWidth)
+    .attr("height", svgHeight)
+    
+    .append("g")
+    .attr("transform", `translate(${svgWidth / 2}, ${svgHeight / 2})`); // 中心点
+
+  // 设置颜色比例尺
+  const color = d3.scaleOrdinal()
+    .domain(data.map((d) => d.category))
+    .range(["#1f77b4", "#ff7f0e"]);
+
+  // 饼图生成器
+  const pie = d3.pie().value((d) => d.value);
+  const arc = d3.arc().innerRadius(0).outerRadius(radius);
+
+  // 绘制饼图
+  svg
+    .selectAll("path")
+    .data(pie(data))
+    .enter()
+    .append("path")
+    .attr("d", arc)
+    .attr("fill", (d) => color(d.data.category))
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 2);
+    
+
+  // 绘制文本
+  svg
+    .selectAll("text")
+    .data(pie(data))
+    .enter()
+    .append("text")
+    .attr("transform", (d) => `translate(${arc.centroid(d)})`)
+    .attr("text-anchor", "middle")
+    .style("font-size", "12px")
+    .style("fill", "#fff")
+    .text((d) => `${d.data.category}: ${d.data.value}`);
+}
     },
   };
   </script>
