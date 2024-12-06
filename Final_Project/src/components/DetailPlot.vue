@@ -6,7 +6,9 @@
         <button @click="toggleYAxisLock" class="action-btn">
           {{ isYAxisLocked ? "Unlock Y-Axis" : "Lock Y-Axis" }}
         </button>
-        <button @click="saveSnapshot" class="action-btn" :disabled="!isYAxisLocked">Snapshot</button>
+        <button @click="saveSnapshot" class="action-btn" :disabled="!isYAxisLocked">
+          Snapshot
+        </button>
         <button @click="clearSnapshots" class="action-btn">Clear Snapshots</button>
         <button @click="$router.push({ name: 'Home' })" class="action-btn">Back</button>
       </div>
@@ -16,11 +18,11 @@
       <div ref="legend" class="legend-container"></div>
     </div>
     <PieChart
-  v-if="showPieChart"
-  :data="pieChartData"
-  :title="pieChartTitle"
-  @close="closePieChart"
-/>
+      v-if="showPieChart"
+      :data="pieChartData"
+      :title="pieChartTitle"
+      @close="closePieChart"
+    />
   </div>
 </template>
 

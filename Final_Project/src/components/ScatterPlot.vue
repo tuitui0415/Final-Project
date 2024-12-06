@@ -16,7 +16,6 @@
         />
         <span class="slider-value">{{ timeSteps[startStep] }}</span>
       </div>
-
       <label for="end-slider" class="slider-label">End Time:</label>
       <div class="slider-container">
         <input
@@ -35,12 +34,12 @@
         <button @click="toggleYAxisLock" class="action-btn">
           {{ isYAxisLocked ? "Unlock Y-Axis" : "Lock Y-Axis" }}
         </button>
-        <button @click="saveSnapshot" class="action-btn" :disabled="!isYAxisLocked">Snapshot
+        <button @click="saveSnapshot" class="action-btn" :disabled="!isYAxisLocked">
+          Snapshot
         </button>
         <button @click="clearSnapshots" class="action-btn">Clear Snapshots</button>
       </div>
     </div>
-
     <div class="chart-container">
       <svg ref="chart"></svg>
       <div ref="legend" class="legend-container"></div>
