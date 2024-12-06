@@ -11,7 +11,7 @@ The tool aims to support developers by analyzing the characteristics that correl
   * `Snapshot` Saves the current state of filtered data for later review.
     * `Y-Axis Lock ` Locks the maximum value of the Y-axis for consistent comparisons across data snapshots. Click the “Unlock Y-Axis” button to unlock the Y-axis.
     * `Clear Snapshots ` Deletes all saved snapshots.
-  * `Interactive Legend` Allows filtering data by category through an interactive legend.
+  * `Interactive Legend` Allows filtering data by category through an interactive legend. Scroll down to browse all genres.
 
 * `Game Categories` Displays a scatter plot dynamically updated based on deeper data.
   * `close` Back to the Main Chart
