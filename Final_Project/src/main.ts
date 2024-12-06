@@ -1,8 +1,8 @@
-import { createApp } from 'vue'
+import {createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
 
-import { createPinia } from "pinia";
+import { createPinia, PiniaVuePlugin } from 'pinia'
 import router from './router';  // Import the router
 
 import 'vuetify/styles'
@@ -18,6 +18,8 @@ const vuetify = createVuetify({
     blueprint: md3,
 })
   
+const pinia = createPinia();
+
 const app = createApp(App);
 app.use(vuetify)
 app.use(router)

@@ -83,9 +83,23 @@ export default {
   },
   methods: {
     handleCircleClick(d) {
-      // `d` is the data bound to the clicked circle, e.g. the genre data object
-      // If you have a router set up, you could navigate to a detail page
-      this.$router.push({ name: 'DetailPlot', params: { genre: d.genre }});
+      this.hideTooltip();
+
+      //console.log("filtered data: ", this.filterGenre(d.genre));
+      console.log("data: ", this.data);
+      console.log("d: ", d);
+      const startDate = this.timeSteps[this.startStep];
+      const endDate = this.timeSteps[this.endStep];
+      console.log("Selected Date Range:", startDate, "to", endDate);
+
+      this.$router.push({ 
+        name: 'DetailPlot', 
+        params: { 
+          genre: d.genre, 
+          startDate: startDate, 
+          endDate: endDate
+        }
+      });
     },
     toggleYAxisLock() {
       this.isYAxisLocked = !this.isYAxisLocked;

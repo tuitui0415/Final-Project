@@ -4,7 +4,7 @@ import DetailPlot from './components/DetailPlot.vue';
 
 const routes = [
   { path: '/', name: 'Home', component: ScatterPlot },
-  { path: '/details/:genre', name: 'DetailPlot', component: DetailPlot, props: true },
+  { path: '/details/:genre/:startDate/:endDate', name: 'DetailPlot', component: DetailPlot, props: true },
 ];
 
 const router = createRouter({
